@@ -14,6 +14,7 @@ import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.NMClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Records;
 
 public class ApplicationMaster {
@@ -24,7 +25,7 @@ public class ApplicationMaster {
     final int n = Integer.valueOf(args[1]);
     
     // Initialize clients to ResourceManager and NodeManagers
-    Configuration conf = new Configuration();
+    Configuration conf = new YarnConfiguration();
 
     AMRMClient<ContainerRequest> rmClient = AMRMClient.createAMRMClient();
     rmClient.init(conf);
@@ -35,8 +36,10 @@ public class ApplicationMaster {
     nmClient.start();
 
     // Register with ResourceManager
+    System.out.println("registerApplicationMaster 0");
     rmClient.registerApplicationMaster("", 0, "");
-
+    System.out.println("registerApplicationMaster 1");
+    
     // Priority for worker containers - priorities are intra-application
     Priority priority = Records.newRecord(Priority.class);
     priority.setPriority(0);
@@ -49,6 +52,7 @@ public class ApplicationMaster {
     // Make container requests to ResourceManager
     for (int i = 0; i < n; ++i) {
       ContainerRequest containerAsk = new ContainerRequest(capability, null, null, priority);
+      System.out.println("Making res-req " + i);
       rmClient.addContainerRequest(containerAsk);
     }
 
@@ -68,6 +72,7 @@ public class ApplicationMaster {
                 " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + 
                 " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr" 
                 ));
+        System.out.println("Launching container " + allocatedContainers);
         nmClient.startContainer(container, ctx);
       }
       Thread.sleep(100);
@@ -78,9 +83,8 @@ public class ApplicationMaster {
     while (completedContainers < n) {
       AllocateResponse response = rmClient.allocate(completedContainers/n);
       for (ContainerStatus status : response.getCompletedContainersStatuses()) {
-        if (status.getExitStatus() == 0) {
-          ++completedContainers;
-        }
+        ++completedContainers;
+        System.out.println("Completed container " + completedContainers);
       }
       Thread.sleep(100);
     }
