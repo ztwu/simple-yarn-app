@@ -56,37 +56,29 @@ public class ApplicationMaster {
       rmClient.addContainerRequest(containerAsk);
     }
 
-    // Obtain allocated containers and launch 
-    int allocatedContainers = 0;
-    while (allocatedContainers < n) {
-      AllocateResponse response = rmClient.allocate(0);
-      for (Container container : response.getAllocatedContainers()) {
-        ++allocatedContainers;
-
-        // Launch container by create ContainerLaunchContext
-        ContainerLaunchContext ctx = 
-            Records.newRecord(ContainerLaunchContext.class);
-        ctx.setCommands(
-            Collections.singletonList(
-                command + 
-                " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + 
-                " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr" 
-                ));
-        System.out.println("Launching container " + allocatedContainers);
-        nmClient.startContainer(container, ctx);
-      }
-      Thread.sleep(100);
-    }
-
-    // Now wait for containers to complete
+    // Obtain allocated containers, launch and check for responses
+    int responseId = 0;
     int completedContainers = 0;
     while (completedContainers < n) {
-      AllocateResponse response = rmClient.allocate(completedContainers/n);
-      for (ContainerStatus status : response.getCompletedContainersStatuses()) {
-        ++completedContainers;
-        System.out.println("Completed container " + completedContainers);
-      }
-      Thread.sleep(100);
+        AllocateResponse response = rmClient.allocate(responseId++);
+        for (Container container : response.getAllocatedContainers()) {
+            // Launch container by create ContainerLaunchContext
+            ContainerLaunchContext ctx =
+                    Records.newRecord(ContainerLaunchContext.class);
+            ctx.setCommands(
+                    Collections.singletonList(
+                            command +
+                                    " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" +
+                                    " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"
+                    ));
+            System.out.println("Launching container " + container.getId());
+            nmClient.startContainer(container, ctx);
+        }
+        for (ContainerStatus status : response.getCompletedContainersStatuses()) {
+            ++completedContainers;
+            System.out.println("Completed container " + status.getContainerId());
+        }
+        Thread.sleep(100);
     }
 
     // Un-register with ResourceManager
