@@ -34,12 +34,18 @@ public class Client {
   Configuration conf = new YarnConfiguration();
   
   public void run(String[] args) throws Exception {
+
+    //TODO 可以提交，但是一直在等待状态，需要排查
     final String command = args[0];
     final int n = Integer.valueOf(args[1]);
     final Path jarPath = new Path(args[2]);
 
     // Create yarnClient
-    YarnConfiguration conf = new YarnConfiguration();
+//    YarnConfiguration conf = new YarnConfiguration();
+    Configuration conf = new YarnConfiguration();
+    conf.set("fs.defaultFS", "hdfs://ubuntu1:9000");
+    conf.set("mapreduce.framework.name", "yarn");
+    conf.set("yarn.resourcemanager.address", "ubuntu1:8032");
     YarnClient yarnClient = YarnClient.createYarnClient();
     yarnClient.init(conf);
     yarnClient.start();
@@ -54,7 +60,7 @@ public class Client {
         Collections.singletonList(
             "$JAVA_HOME/bin/java" +
             " -Xmx256M" +
-            " com.hortonworks.simpleyarnapp.ApplicationMaster" +
+            " com.hortonworks.simpleyarnapp.Client" +
             " " + command +
             " " + String.valueOf(n) +
             " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + 
@@ -66,7 +72,7 @@ public class Client {
     LocalResource appMasterJar = Records.newRecord(LocalResource.class);
     setupAppMasterJar(jarPath, appMasterJar);
     amContainer.setLocalResources(
-        Collections.singletonMap("simpleapp.jar", appMasterJar));
+        Collections.singletonMap("simple-yarn-app-1.1.0.jar", appMasterJar));
 
     // Setup CLASSPATH for ApplicationMaster
     Map<String, String> appMasterEnv = new HashMap<String, String>();
@@ -131,6 +137,7 @@ public class Client {
   
   public static void main(String[] args) throws Exception {
     Client c = new Client();
-    c.run(args);
+    String[] arg = {"/home/ztwu/hadoop/yarn/myShell.sh","2","hdfs://ubuntu1:9000/yarn-test/input/simple-yarn-app-1.1.0.jar"};
+    c.run(arg);
   }
 }
